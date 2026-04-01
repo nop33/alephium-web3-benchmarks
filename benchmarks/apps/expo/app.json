@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "bench-expo",
+    "slug": "bench-expo",
+    "version": "1.0.0",
+    "platforms": [
+      "web",
+      "ios",
+      "android"
+    ],
+    "web": {
+      "bundler": "metro"
+    },
+    "ios": {
+      "bundleIdentifier": "com.alephium-dev.bench-expo"
+    }
+  }
+}

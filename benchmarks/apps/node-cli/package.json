@@ -1,0 +1,8 @@
+{
+  "name": "bench-node-cli",
+  "private": true,
+  "version": "0.0.0",
+  "dependencies": {
+    "@alephium/web3": "file:/Users/nop33/dev/projects/alephium/web3-rewrite/benchmarks/../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz"
+  }
+}

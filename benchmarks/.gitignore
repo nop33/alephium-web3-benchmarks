@@ -1,0 +1,7 @@
+results/*.txt
+results/*.json
+!results/baseline.md
+apps/*/node_modules/
+apps/*/dist/
+apps/*/.expo/
+apps/*/package-lock.json

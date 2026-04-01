@@ -1,0 +1,23 @@
+# Existing repos (submodules/forks) - tracked independently
+alephium-web3/
+viem/
+wagmi/
+docs/
+
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+
+# Editor
+.idea/
+.vscode/
+
+# Expo generated
+benchmarks/apps/expo/ios/
+benchmarks/apps/expo/android/
+benchmarks/apps/expo/.expo/
+
+# Claude internal
+.claude/
