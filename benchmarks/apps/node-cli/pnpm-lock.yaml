@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@alephium/web3':
-        specifier: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.1.tgz
-        version: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.1.tgz
+        specifier: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz
+        version: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz
 
 packages:
 
-  '@alephium/web3@file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.1.tgz':
-    resolution: {integrity: sha512-yaFlRcXINUWRoBU5UETNxoQ/wZ4XByIfVF4IOa323xB5d760x+ms6PBtkJ7fmomyCNfJ6URF2HkwEYEWC1qriw==, tarball: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.1.tgz}
-    version: 2.0.11-rc.1
+  '@alephium/web3@file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz':
+    resolution: {integrity: sha512-pLrs5QqLVV7qoNr3Y6eE4f+1aLpYdkIC0YnhGcKko+/PEVxqbNGNYFH0KoRhsVvoWaHFW0BaWjWNtOsNTJ1KBA==, tarball: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz}
+    version: 2.0.10
     engines: {node: '>=20.0.0', npm: '>=7.0.0'}
 
   '@noble/curves@1.6.0':
@@ -45,7 +45,7 @@ packages:
 
 snapshots:
 
-  '@alephium/web3@file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.1.tgz':
+  '@alephium/web3@file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz':
     dependencies:
       '@noble/curves': 1.6.0
       '@noble/hashes': 1.6.1

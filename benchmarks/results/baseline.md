@@ -186,20 +186,108 @@ Types resolve correctly, but **only CJS is available** — there is no ESM entry
 
 ---
 
-## What "After" Should Look Like
+## Modernization Results — @alephium/web3
 
-After completing the modernization roadmap, we expect:
+> Captured after completing Phase 1 (environment-agnostic core), Phase 2 (modern build tooling), and Phase 3 (package config optimization) for `@alephium/web3`.
 
-| Metric | Before | Target |
+### Changes made
+
+- **Dependencies removed:** `elliptic`, `bn.js`, `blakejs`, `crypto-browserify`, `stream-browserify`, `path-browserify`, `cross-fetch` (7 dependencies removed)
+- **Dependencies added:** `@noble/curves`, `@noble/hashes` (2 dependencies added)
+- **Build tool:** Webpack → tsup (unbundled, per-file CJS + ESM output with `bundle: false`)
+- **UMD bundle:** Removed entirely
+- **ESM output:** Now available (`dist/*.mjs`) — bundlers get proper ESM with tree-shaking
+- **Node `crypto` import:** Replaced with `globalThis.crypto` (native in Node 20+)
+- **`fs` import:** Made dynamic (`await import('fs')`) so it doesn't break browser builds
+- **`BigInt.prototype.toJSON` monkey-patch:** Removed — replaced with `stringify` utility (viem-inspired). Auto-generated API files are post-processed by `scripts/postprocess-schemas.sh`
+- **`"sideEffects": false`:** Declared — enables bundler tree-shaking
+- **Type-only exports:** Fixed barrel files to use `export type` for interfaces/types
+- **Minimum Node version:** 14 → 20
+- **Polyfill plugin no longer needed:** Vite/webapp builds work without `vite-plugin-node-polyfills`
+
+### Tree-Shaking Effectiveness (size-limit)
+
+| Import | Before (brotli) | After (brotli) | Change |
+|---|---|---|---|
+| Everything (`import *`) | **99.3 kB** | **81.5 kB** | -18% |
+| One function (`import { isValidAddress }`) | **99.2 kB** | **81.4 kB** | -18% |
+| Codec namespace (`import { codec }`) | **99.2 kB** | **81.5 kB** | -18% |
+| Utils namespace (`import { utils }`) | **99.0 kB** | **81.5 kB** | -18% |
+
+> Note: size-limit uses esbuild which has limited tree-shaking with barrel `export *` re-exports. Real-world bundlers (Vite/Rollup) with `"sideEffects": false` achieve dramatically better results — see the app benchmarks below.
+
+### Package Metrics
+
+| Metric | Before | After | Change |
+|---|---|---|---|
+| Direct dependencies | **11** | **6** | -45% |
+| UMD bundle | **724 kB** | **Removed** | -100% |
+| ESM output | **None** | **Yes** | New |
+| Node polyfill deps | 3 | 0 | -100% |
+| `sideEffects: false` | No | **Yes** | New |
+
+### Real-World App Benchmarks
+
+| App | Before | After | Change |
+|---|---|---|---|
+| node-cli: `node_modules` | 11 MB | 9.9 MB | -10% |
+| node-cli: works | Yes | Yes | — |
+| website: JS bundle (raw) | **742 kB** | **48 kB** | **-93%** |
+| website: JS bundle (gzip) | 204 kB | 14 kB | **-93%** |
+| website: polyfill plugin needed | Yes | **No** | Removed |
+| webapp: JS bundle (raw) | **928 kB** | **238 kB** | **-74%** |
+| webapp: JS bundle (gzip) | 261 kB | 74 kB | **-72%** |
+| webapp: polyfill plugin needed | Yes | **No** | Removed |
+| expo: web bundle (raw) | 1.1 MB | TBD | |
+| expo: polyfills needed | 12 workarounds | TBD (likely reduced) | |
+
+> The website saw the largest improvement because it imports only `isValidAddress` and `NodeProvider` — tree-shaking drops everything else (codec, contract, signer, exchange, etc.). The webapp includes React overhead (~140 kB) but still achieved a 74% reduction. Both apps **no longer need `vite-plugin-node-polyfills`** — the SDK works natively in browser bundlers.
+
+### What's resolved
+
+| Issue | Status |
+|---|---|
+| No ESM output | **Fixed** — dual CJS/ESM via tsup |
+| UMD browser bundle | **Fixed** — removed, bundlers get ESM |
+| No tree-shaking | **Fixed** — `sideEffects: false` + unbundled ESM output. Website: 742 kB → 48 kB |
+| Redundant crypto libraries (`elliptic` + `@noble/secp256k1`) | **Fixed** — consolidated on `@noble` |
+| Node polyfill dependencies | **Fixed** — all removed from `@alephium/web3` |
+| `cross-fetch` polyfill | **Fixed** — using native `fetch` |
+| Node `crypto` import | **Fixed** — using `globalThis.crypto` |
+| `fs` top-level import breaking browsers | **Fixed** — dynamic import |
+| `BigInt.prototype.toJSON` monkey-patch | **Fixed** — replaced with `stringify` utility |
+| `sideEffects: false` | **Fixed** — declared in `package.json` |
+| Polyfill plugin needed for Vite | **Fixed** — `vite-plugin-node-polyfills` no longer required |
+| `bignumber.js` | **Kept** — small, zero-dep, used only for number formatting |
+
+### Still open (other packages)
+
+| Issue | Package | Status |
 |---|---|---|
-| `isValidAddress` import size | 99.2 kB | < 10 kB |
-| Full import size | 99.3 kB | < 50 kB |
-| Website bundle (one function) | 742 kB | < 50 kB |
-| Webapp bundle (one function) | 928 kB | < 250 kB |
-| Expo bundle (one function) | 1.1 MB | < 300 kB |
-| Polyfills required | Yes | **None** |
-| Expo workarounds needed | 12 (polyfills, shims, custom resolver, dev build, .npmrc) | **None** |
-| Works in Expo Go | No | **Yes** |
+| Webpack + UMD bundle | `web3-wallet`, `walletconnect` | Not yet migrated |
+| `elliptic` + `Buffer` usage | `web3-wallet` | Not yet migrated |
+| `bip39` wordlist bloat | `web3-wallet` | Consider `@scure/bip39` |
+| `path-browserify` | `walletconnect` | Not yet migrated |
+| Expo polyfill workarounds | expo benchmark app | Reduced but not fully tested yet |
+| Sub-path exports | `@alephium/web3` | Future enhancement |
+
+---
+
+## Before vs After Summary
+
+| Metric | Before | After |
+|---|---|---|
+| `@alephium/web3` dependencies | 11 | **6** |
+| Website bundle (one function + balance fetch) | 742 kB | **48 kB (-93%)** |
+| Website bundle (gzip) | 204 kB | **14 kB (-93%)** |
+| Webapp bundle (React, one function + balance fetch) | 928 kB | **238 kB (-74%)** |
+| Webapp bundle (gzip) | 261 kB | **74 kB (-72%)** |
+| Node CLI: `node_modules` size | 11 MB | **9.9 MB** |
+| UMD browser bundle | 724 kB | **Removed** |
 | ESM support | No | **Yes** |
-| Direct dependencies | 11 | < 5 |
 | `sideEffects: false` | No | **Yes** |
+| Tree-shaking works | No | **Yes** |
+| `vite-plugin-node-polyfills` needed | Yes | **No** |
+| Node polyfill dependencies shipped | 3 | **0** |
+| `BigInt.prototype.toJSON` global mutation | Yes | **No** |
+| Minimum Node version | 14 | **20** |

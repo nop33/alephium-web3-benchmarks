@@ -1,5 +1,2 @@
-// Polyfills required by @alephium/web3 in React Native.
-const { Buffer } = require('buffer')
-global.Buffer = Buffer
-
+// Provides crypto.getRandomValues globally for @noble/secp256k1 in React Native.
 require('react-native-get-random-values')

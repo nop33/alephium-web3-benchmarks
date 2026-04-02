@@ -12,7 +12,7 @@
     "build:bundle": "npx react-native bundle --platform ios --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output dist/bundle.js"
   },
   "dependencies": {
-    "@alephium/web3": "file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.2.tgz",
+    "@alephium/web3": "file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz",
     "@expo/metro-runtime": "~55.0.7",
     "buffer": "^6.0.3",
     "events": "^3.3.0",

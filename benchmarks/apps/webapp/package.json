@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@alephium/web3": "file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.2.tgz",
+    "@alephium/web3": "file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

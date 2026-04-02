@@ -118,7 +118,7 @@ Strip out `bn.js` entirely — it was only used by `elliptic` which has been rep
 * **`@alephium/walletconnect-provider`** (future): Still uses `path-browserify`. Eliminate the path manipulation or use simple string operations.
 
 #### 1f. Eliminate the `BigInt.prototype.toJSON` Monkey-Patch
-**Deferred.** The monkey-patch in `src/index.ts` globally mutates `BigInt.prototype.toJSON` so that `JSON.stringify` can handle BigInt values. Removing it requires adding explicit `bigintReplacer` calls everywhere `JSON.stringify` might encounter a BigInt — including in third-party code like `@walletconnect/sign-client` which internally serializes request params. A `bigintReplacer` utility has been added to `utils.ts` for future use, but the monkey-patch is kept for now because the migration surface is too large to do safely at this stage. This means `"sideEffects": false` cannot be declared yet — it will be revisited when the other packages are modernized and the serialization boundaries are better defined.
+**Done.** Replaced with a `stringify` utility (in `src/utils/stringify.ts`) — a drop-in replacement for `JSON.stringify` that converts BigInt values to strings via a replacer function, following the same approach as viem. All internal `JSON.stringify` calls have been replaced with `stringify`, including in the auto-generated API files. The swagger-typescript-api template (`configs/http-client.eta`) injects the `stringify` import, and a `postprocess-schemas` script automatically replaces `JSON.stringify` with `stringify` after code generation. The WalletConnect provider sanitizes params with `JSON.parse(stringify(...))` before passing them to the WalletConnect client. `"sideEffects": false` is now declared in `package.json`.
 
 ### Phase 2: Modern Library Build Tooling
 Move away from using Webpack as a library bundler.
@@ -129,37 +129,9 @@ Move away from using Webpack as a library bundler.
 
 ### Phase 3: Optimize Package Configuration
 Inform bundlers how to efficiently consume the library.
-1. **Proper `exports` field:** Rewrite the `package.json` exports to support conditional exports properly.
-   ```json
-   "exports": {
-     ".": {
-       "import": {
-         "types": "./dist/index.d.mts",
-         "default": "./dist/index.mjs"
-       },
-       "require": {
-         "types": "./dist/index.d.ts",
-         "default": "./dist/index.js"
-       }
-     }
-   }
-   ```
-2. **Sub-path exports:** Expose logical sub-modules as separate entry points so consumers can import only what they need without relying solely on tree-shaking. For example:
-   ```json
-   "exports": {
-     ".": { ... },
-     "./codec": {
-       "import": { "types": "./dist/codec.d.mts", "default": "./dist/codec.mjs" },
-       "require": { "types": "./dist/codec.d.ts", "default": "./dist/codec.js" }
-     },
-     "./utils": {
-       "import": { "types": "./dist/utils.d.mts", "default": "./dist/utils.mjs" },
-       "require": { "types": "./dist/utils.d.ts", "default": "./dist/utils.js" }
-     }
-   }
-   ```
-   This pattern (used by viem, wagmi, and other modern libraries) gives bundlers explicit boundaries and enables more aggressive code splitting.
-3. **Declare `"sideEffects": false`:** Add this to `package.json`. This is the most crucial step for tree-shaking. It tells bundlers like Webpack and Vite, "If a developer doesn't use an imported function, it is 100% safe to delete it because this file doesn't have hidden side-effects (like modifying the global `window` object)." This is only safe to declare after the `BigInt.prototype.toJSON` monkey-patch is removed (Phase 1f).
+1. **Proper `exports` field:** Done. `package.json` now has `"import"` and `"require"` conditions with correct type declarations for each.
+2. **Declare `"sideEffects": false`:** Done. The `BigInt.prototype.toJSON` monkey-patch has been replaced with a `stringify` utility, so the package is now side-effect-free.
+3. **Sub-path exports** (future): Expose logical sub-modules as separate entry points (`@alephium/web3/codec`, `@alephium/web3/utils`, etc.) so consumers can import only what they need without relying solely on tree-shaking. This follows the pattern used by viem, wagmi, and other modern libraries.
 
 ### Phase 4: CI Validation and Size Tracking
 1. **Type checking:** Add `@arethetypeswrong/cli` and `publint` to the CI pipeline. These tools verify that the `package.json` exports and TypeScript definitions are correctly formed for all environments. Also run these during `prepublishOnly` so issues are caught locally before publishing.

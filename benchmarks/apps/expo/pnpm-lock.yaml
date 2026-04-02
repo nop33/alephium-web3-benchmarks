@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@alephium/web3':
-        specifier: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.2.tgz
-        version: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.2.tgz
+        specifier: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz
+        version: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz
       '@expo/metro-runtime':
         specifier: ~55.0.7
         version: 55.0.7(@expo/dom-webview@55.0.3)(expo@55.0.9)(react-dom@19.2.0(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
@@ -66,9 +66,9 @@ importers:
 
 packages:
 
-  '@alephium/web3@file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.2.tgz':
-    resolution: {integrity: sha512-qBgvTgk6xp4e9e9D0aZpHzr4glkI3M0Wz3IKGVX73AMMahXPNOBtj3GCc5krMdtrxvnmggk+4HOPW2rZoMHx4A==, tarball: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.2.tgz}
-    version: 2.0.11-rc.2
+  '@alephium/web3@file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz':
+    resolution: {integrity: sha512-pLrs5QqLVV7qoNr3Y6eE4f+1aLpYdkIC0YnhGcKko+/PEVxqbNGNYFH0KoRhsVvoWaHFW0BaWjWNtOsNTJ1KBA==, tarball: file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz}
+    version: 2.0.10
     engines: {node: '>=20.0.0', npm: '>=7.0.0'}
 
   '@babel/code-frame@7.29.0':
@@ -1312,8 +1312,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  electron-to-chromium@1.5.330:
-    resolution: {integrity: sha512-jFNydB5kFtYUobh4IkWUnXeyDbjf/r9gcUEXe1xcrcUxIGfTdzPXA+ld6zBRbwvgIGVzDll/LTIiDztEtckSnA==}
+  electron-to-chromium@1.5.331:
+    resolution: {integrity: sha512-IbxXrsTlD3hRodkLnbxAPP4OuJYdWCeM3IOdT+CpcMoIwIoDfCmRpEtSPfwBXxVkg9xmBeY7Lz2Eo2TDn/HC3Q==}
 
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
@@ -2129,8 +2129,8 @@ packages:
   node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
 
-  node-releases@2.0.36:
-    resolution: {integrity: sha512-TdC8FSgHz8Mwtw9g5L4gR/Sh9XhSP/0DEkQxfEFXOpiul5IiHgHan2VhYYb6agDSfp4KuvltmGApc8HMgUrIkA==}
+  node-releases@2.0.37:
+    resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
 
   normalize-path@3.0.0:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
@@ -2487,8 +2487,8 @@ packages:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
     engines: {node: '>=8'}
 
-  slugify@1.6.8:
-    resolution: {integrity: sha512-HVk9X1E0gz3mSpoi60h/saazLKXKaZThMLU3u/aNwoYn8/xQyX2MGxL0ui2eaokkD7tF+Zo+cKTHUbe1mmmGzA==}
+  slugify@1.6.9:
+    resolution: {integrity: sha512-vZ7rfeehZui7wQs438JXBckYLkIIdfHOXsaVEUMyS5fHo1483l1bMdo0EDSWYclY0yZKFOipDy4KHuKs6ssvdg==}
     engines: {node: '>=8.0.0'}
 
   source-map-js@1.2.1:
@@ -2781,7 +2781,7 @@ packages:
 
 snapshots:
 
-  '@alephium/web3@file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.2.tgz':
+  '@alephium/web3@file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz':
     dependencies:
       '@noble/curves': 1.6.0
       '@noble/hashes': 1.6.1
@@ -3443,7 +3443,7 @@ snapshots:
       resolve-from: 5.0.0
       semver: 7.7.4
       send: 0.19.2
-      slugify: 1.6.8
+      slugify: 1.6.9
       source-map-support: 0.5.21
       stacktrace-parser: 0.1.11
       structured-headers: 0.4.1
@@ -3483,7 +3483,7 @@ snapshots:
       glob: 13.0.6
       resolve-from: 5.0.0
       semver: 7.7.4
-      slugify: 1.6.8
+      slugify: 1.6.9
       xcode: 3.0.1
       xml2js: 0.6.0
     transitivePeerDependencies:
@@ -3503,7 +3503,7 @@ snapshots:
       resolve-from: 5.0.0
       resolve-workspace-root: 2.0.1
       semver: 7.7.4
-      slugify: 1.6.8
+      slugify: 1.6.9
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -4260,8 +4260,8 @@ snapshots:
     dependencies:
       baseline-browser-mapping: 2.10.13
       caniuse-lite: 1.0.30001784
-      electron-to-chromium: 1.5.330
-      node-releases: 2.0.36
+      electron-to-chromium: 1.5.331
+      node-releases: 2.0.37
       update-browserslist-db: 1.2.3(browserslist@4.28.2)
 
   bser@2.1.1:
@@ -4460,7 +4460,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  electron-to-chromium@1.5.330: {}
+  electron-to-chromium@1.5.331: {}
 
   emoji-regex@8.0.0: {}
 
@@ -5493,7 +5493,7 @@ snapshots:
 
   node-int64@0.4.0: {}
 
-  node-releases@2.0.36: {}
+  node-releases@2.0.37: {}
 
   normalize-path@3.0.0: {}
 
@@ -5892,7 +5892,7 @@ snapshots:
 
   slash@3.0.0: {}
 
-  slugify@1.6.8: {}
+  slugify@1.6.9: {}
 
   source-map-js@1.2.1: {}
 
