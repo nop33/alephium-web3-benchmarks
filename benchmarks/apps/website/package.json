@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "start": "vite dev",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@alephium/web3": "file:/Users/nop33/dev/projects/alephium/web3-rewrite/benchmarks/../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz"
+    "@alephium/web3": "file:../../../alephium-web3/packages/web3/alephium-web3-2.0.11-rc.0.tgz"
   },
   "devDependencies": {
     "vite": "^6.0.0",

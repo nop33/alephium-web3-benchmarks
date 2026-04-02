@@ -97,8 +97,8 @@ The same benchmarks will be re-run after each phase to track progress.
 ### Phase 1: Environment-Agnostic Core (The "Diet")
 Before changing how the code is built, we must change what code is built to ensure it runs natively everywhere.
 
-#### 1a. Bump Minimum Node.js Version to >= 18
-Update the `engines` field in the root `package.json` to require Node >= 18. This unlocks native `fetch` and `crypto.subtle`, dramatically reducing the polyfill surface for subsequent steps.
+#### 1a. Bump Minimum Node.js Version to >= 20
+Update the `engines` field in the root `package.json` to require Node >= 20 (the oldest active LTS; Node 18 is EOL since April 2025). This unlocks native `fetch`, `globalThis.crypto.subtle`, and better ESM support, dramatically reducing the polyfill surface for subsequent steps.
 
 #### 1b. Remove `cross-fetch`
 With Node >= 18, `fetch` is globally available in Node, browsers, and edge runtimes. Remove the `cross-fetch` dependency from `@alephium/web3` and any other packages that use it (`@alephium/cli`). For consumers who need to customize the fetch implementation (e.g., for retries or proxies), consider exposing an optional fetch injection point (similar to how viem accepts a custom `transport`).
@@ -110,21 +110,22 @@ Standardize on the `@noble` suite of isomorphic, audited, zero-dependency crypto
 * **Remove `crypto-browserify`** and `stream-browserify` — the `@noble` libraries and Web Crypto API eliminate the need for Node `crypto` polyfills entirely.
 
 #### 1d. Migrate to Native `BigInt`
-Strip out `bn.js` and `bignumber.js` entirely, replacing them with native JavaScript `BigInt` (supported since ES2020, which is already the TypeScript target). This results in a massive size reduction and improved performance.
+Strip out `bn.js` entirely — it was only used by `elliptic` which has been replaced by `@noble/secp256k1`. **`bignumber.js` is kept** for now: it's a small, zero-dependency library used only in `number.ts` for decimal formatting with thousand separators (`toFormat`). Replacing it would require writing and testing custom decimal rounding and formatting logic — the cost/benefit doesn't justify it at this stage. It can be revisited later.
 
 #### 1e. Remove Remaining Node.js Polyfills
-* **Remove all `Buffer` usage** — the core `@alephium/web3` package uses Node's built-in `Buffer` throughout its codebase (codec, address, signer, utils). In browsers, webpack silently polyfills this; in React Native, it causes runtime crashes (`Cannot read property 'slice' of undefined`) unless consumers manually install and globally inject the `buffer` npm package. `@alephium/web3-wallet` also depends on `buffer` explicitly. Replace all `Buffer` usage with `Uint8Array` and standard `TextEncoder`/`TextDecoder`.
-* **Remove `path-browserify`** (used in `@alephium/walletconnect-provider`) — eliminate the path manipulation or use simple string operations.
-* **Remove `stream-browserify`** — no longer needed once crypto is migrated.
+* **`@alephium/web3`: Done.** The core package has no `Buffer` usage in its source code. The `Buffer`-related React Native crashes were caused by dependencies (`crypto-browserify`, `elliptic`) which have been removed in 1c. The polyfill packages (`crypto-browserify`, `stream-browserify`, `path-browserify`) have also been removed from dependencies.
+* **`@alephium/web3-wallet`** (future): Still depends on `buffer` explicitly and uses `Buffer` in its source. Replace with `Uint8Array` and `TextEncoder`/`TextDecoder`. Also depends on `bip39` which ships large wordlist JSON files for every language — consider replacing with `@scure/bip39` (lighter, from the same `@noble`/`@scure` ecosystem that viem uses) or ensuring only the English wordlist is included.
+* **`@alephium/walletconnect-provider`** (future): Still uses `path-browserify`. Eliminate the path manipulation or use simple string operations.
 
 #### 1f. Eliminate the `BigInt.prototype.toJSON` Monkey-Patch
-Replace the global `BigInt.prototype.toJSON` mutation in `src/index.ts` with an explicit serialization approach — for example, a custom JSON `replacer`/`reviver` pair exported as a utility, or using string conversion at serialization boundaries. This is a prerequisite for being able to truthfully declare `"sideEffects": false`.
+**Deferred.** The monkey-patch in `src/index.ts` globally mutates `BigInt.prototype.toJSON` so that `JSON.stringify` can handle BigInt values. Removing it requires adding explicit `bigintReplacer` calls everywhere `JSON.stringify` might encounter a BigInt — including in third-party code like `@walletconnect/sign-client` which internally serializes request params. A `bigintReplacer` utility has been added to `utils.ts` for future use, but the monkey-patch is kept for now because the migration surface is too large to do safely at this stage. This means `"sideEffects": false` cannot be declared yet — it will be revisited when the other packages are modernized and the serialization boundaries are better defined.
 
 ### Phase 2: Modern Library Build Tooling
 Move away from using Webpack as a library bundler.
-1. **Adopt a modern library builder:** Replace Webpack with a modern builder like `tsup`, `rollup`, or `unbuild`. These tools use `esbuild` or `swc` under the hood to compile dual formats (ESM and CJS) natively and extremely fast. This applies to `@alephium/web3`, `@alephium/web3-wallet`, and `@alephium/walletconnect-provider` — all three currently use Webpack.
-2. **Dual-Publishing:** Configure the builder to emit an `.mjs` (ESM) build alongside the `.js` or `.cjs` (CommonJS) build.
-3. **Drop the UMD bundle:** Stop pointing the browser entry to a pre-minified bundle, allowing consumer bundlers to perform their own tree-shaking and minification.
+1. **Adopt `tsup`:** Replace Webpack with `tsup` (uses esbuild under the hood). For `@alephium/web3` this is done — tsup emits both CJS (`.cjs`) and ESM (`.mjs`) from a single config.
+2. **Dual-Publishing:** tsup emits `dist/index.cjs` and `dist/index.mjs` with proper `exports` conditions (`"import"` and `"require"`).
+3. **Drop the UMD bundle:** The `"browser"` field and `alephium-web3.min.js` are removed. Consumer bundlers now get ESM and perform their own tree-shaking and minification.
+4. **Type declarations:** Currently using `tsc --emitDeclarationOnly` alongside tsup because tsup's DTS bundler renames internal types, causing type mismatches with other workspace packages (`web3-wallet`, etc.) that still resolve types from `dist/`. Once those packages are also migrated to tsup, we can switch to tsup's built-in `dts: true` for cleaner output (`dist/index.d.ts` and `dist/index.d.mts` instead of `dist/types/src/index.d.ts`).
 
 ### Phase 3: Optimize Package Configuration
 Inform bundlers how to efficiently consume the library.

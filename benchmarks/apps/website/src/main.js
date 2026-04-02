@@ -1,11 +1,26 @@
-import { isValidAddress } from '@alephium/web3'
+import { isValidAddress, NodeProvider } from '@alephium/web3'
+
+const NODE_URL = 'https://node.mainnet.alephium.org'
+const nodeProvider = new NodeProvider(NODE_URL)
 
 const input = document.getElementById('address')
 const result = document.getElementById('result')
+const balanceEl = document.getElementById('balance')
 
-function validate() {
-  const valid = isValidAddress(input.value)
+async function validate() {
+  const address = input.value
+  const valid = isValidAddress(address)
   result.textContent = valid ? 'Valid address' : 'Invalid address'
+  balanceEl.textContent = ''
+
+  if (valid) {
+    try {
+      const balance = await nodeProvider.addresses.getAddressesAddressBalance(address)
+      balanceEl.textContent = `Balance: ${balance.balanceHint}`
+    } catch (err) {
+      balanceEl.textContent = `Failed to fetch balance: ${err.message}`
+    }
+  }
 }
 
 input.addEventListener('input', validate)
