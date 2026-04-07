@@ -2,6 +2,7 @@ results/*.txt
 results/*.json
 !results/baseline.md
 !results/results.md
+!results/frontend-apps.md
 apps/*/node_modules/
 apps/*/dist/
 apps/*/.expo/
