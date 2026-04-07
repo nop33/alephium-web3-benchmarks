@@ -101,12 +101,14 @@ Replaced webpack with **tsc dual-build** (same approach as viem) across all thre
 
 ### Results
 
-| Metric | Before | After |
+> Measured with full benchmark apps (HD wallet derivation, all crypto ops, balance fetching). Both v2.0.10 and v3.0.0-test.0 tested with identical app code and published packages from npm. See [benchmarks/results/](benchmarks/results/) for details.
+
+| Metric | Before (v2.0.10) | After (v3.0.0-test.0) |
 |---|---|---|
-| Website bundle (vanilla JS) | 742 kB | **48 kB (-93%)** |
-| Website bundle (gzip) | 204 kB | **14 kB (-93%)** |
-| Webapp bundle (React) | 928 kB | **238 kB (-74%)** |
-| Webapp bundle (gzip) | 261 kB | **74 kB (-72%)** |
+| Website bundle (vanilla JS) | 1,697 kB | **207 kB (-88%)** |
+| Website bundle (gzip) | 517 kB | **69 kB (-87%)** |
+| Webapp bundle (React) | 1,904 kB | **407 kB (-79%)** |
+| Webapp bundle (gzip) | 580 kB | **131 kB (-77%)** |
 | `@alephium/web3` dependencies | 11 | **6** |
 | `@alephium/web3-wallet` dependencies | 8 | **4** |
 | Vite dev server works | No | **Yes** |

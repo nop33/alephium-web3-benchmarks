@@ -54,12 +54,14 @@ pnpm add @alephium/web3@<version> @alephium/web3-wallet@<version>
 - **[results/baseline.md](results/baseline.md)** — "before" metrics captured prior to any changes
 - **[results/results.md](results/results.md)** — "after" metrics with before/after comparisons
 
-Headline numbers:
+Headline numbers (measured with full benchmark apps, published packages from npm):
 
-| Metric | Before | After |
+| Metric | v2.0.10 | v3.0.0-test.0 |
 |---|---|---|
-| Website bundle | 742 kB | **48 kB (-93%)** |
-| Webapp bundle | 928 kB | **238 kB (-74%)** |
+| Website bundle | 1,697 kB | **207 kB (-88%)** |
+| Website bundle (gzip) | 517 kB | **69 kB (-87%)** |
+| Webapp bundle | 1,904 kB | **407 kB (-79%)** |
+| Webapp bundle (gzip) | 580 kB | **131 kB (-77%)** |
 | Polyfill plugin needed | Yes | **No** |
 | Expo workarounds | 12 | **4** |
 | Expo Go compatible | No | **Yes** |

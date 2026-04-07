@@ -6,14 +6,16 @@
 
 ## Before vs After
 
-| Metric | Before | After |
+> Bundle sizes measured with the full benchmark apps (HD wallet derivation, all crypto ops, balance fetching across 3 networks) — not just a single function import. Both versions tested with the same app code, same Vite build, published packages from npm.
+
+| Metric | Before (v2.0.10) | After (v3.0.0-test.0) |
 |---|---|---|
 | `@alephium/web3` dependencies | 11 | **6** |
 | `@alephium/web3-wallet` dependencies | 8 | **4** |
-| Website bundle (vanilla JS) | 742 kB | **48 kB (-93%)** |
-| Website bundle (gzip) | 204 kB | **14 kB (-93%)** |
-| Webapp bundle (React) | 928 kB | **238 kB (-74%)** |
-| Webapp bundle (gzip) | 261 kB | **74 kB (-72%)** |
+| Website bundle (vanilla JS) | 1,697 kB | **207 kB (-88%)** |
+| Website bundle (gzip) | 517 kB | **69 kB (-87%)** |
+| Webapp bundle (React) | 1,904 kB | **407 kB (-79%)** |
+| Webapp bundle (gzip) | 580 kB | **131 kB (-77%)** |
 | Vite dev server works | No | **Yes** |
 | UMD browser bundles | 3 packages | **Removed** |
 | ESM support | No | **Yes** |
@@ -70,13 +72,15 @@
 
 ## App Benchmarks
 
-| App | Before | After | Change |
+> Measured with the full benchmark apps using published packages from npm. Both `v2.0.10` and `v3.0.0-test.0` tested with identical app code — HD wallet derivation, all crypto operations, balance fetching across mainnet/testnet/devnet.
+
+| App | Before (v2.0.10) | After (v3.0.0-test.0) | Change |
 |---|---|---|---|
-| website: JS bundle (raw) | **742 kB** | **48 kB** | **-93%** |
-| website: JS bundle (gzip) | 204 kB | 14 kB | **-93%** |
+| website: JS bundle (raw) | **1,697 kB** | **207 kB** | **-88%** |
+| website: JS bundle (gzip) | 517 kB | 69 kB | **-87%** |
 | website: polyfill plugin needed | Yes | **No** | Removed |
-| webapp: JS bundle (raw) | **928 kB** | **238 kB** | **-74%** |
-| webapp: JS bundle (gzip) | 261 kB | 74 kB | **-72%** |
+| webapp: JS bundle (raw) | TBD | TBD | |
+| webapp: JS bundle (gzip) | TBD | TBD | |
 | webapp: polyfill plugin needed | Yes | **No** | Removed |
 | webapp: Vite dev server works | No | **Yes** | Fixed |
 | expo: workarounds needed | 12 | **4** | **-67%** |
