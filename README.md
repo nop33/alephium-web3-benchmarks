@@ -12,7 +12,8 @@ benchmarks/
     webapp/             # Vite + React benchmark app
     expo/               # Expo (React Native) benchmark app
   results/
-    baseline.md         # Before/after benchmark report
+    baseline.md         # "Before" metrics (v2.0.10)
+    results.md          # "After" metrics with before/after comparisons
   test-local.sh         # Verdaccio local registry for testing published packages
   README.md             # Benchmark documentation
 README.md               # This file — roadmap, decisions, and status
