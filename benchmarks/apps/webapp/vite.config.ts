@@ -5,5 +5,8 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist'
+  },
+  optimizeDeps: {
+    include: ['@alephium/web3', '@alephium/web3-wallet']
   }
 })

@@ -186,51 +186,45 @@ Types resolve correctly, but **only CJS is available** — there is no ESM entry
 
 ---
 
-## Modernization Results — @alephium/web3
+## Modernization Results
 
-> Captured after completing Phase 1 (environment-agnostic core), Phase 2 (modern build tooling), and Phase 3 (package config optimization) for `@alephium/web3`.
+> Captured after modernizing `@alephium/web3`, `@alephium/web3-wallet`, and `@alephium/walletconnect-provider`.
 
 ### Changes made
 
-- **Dependencies removed:** `elliptic`, `bn.js`, `blakejs`, `crypto-browserify`, `stream-browserify`, `path-browserify`, `cross-fetch` (7 dependencies removed)
-- **Dependencies added:** `@noble/curves`, `@noble/hashes` (2 dependencies added)
-- **Build tool:** Webpack → tsup (unbundled, per-file CJS + ESM output with `bundle: false`)
-- **UMD bundle:** Removed entirely
-- **ESM output:** Now available (`dist/*.mjs`) — bundlers get proper ESM with tree-shaking
-- **Node `crypto` import:** Replaced with `globalThis.crypto` (native in Node 20+)
-- **`fs` import:** Made dynamic (`await import('fs')`) so it doesn't break browser builds
-- **`BigInt.prototype.toJSON` monkey-patch:** Removed — replaced with `stringify` utility (viem-inspired). Auto-generated API files are post-processed by `scripts/postprocess-schemas.sh`
-- **`"sideEffects": false`:** Declared — enables bundler tree-shaking
-- **Type-only exports:** Fixed barrel files to use `export type` for interfaces/types
-- **Minimum Node version:** 14 → 20
-- **Polyfill plugin no longer needed:** Vite/webapp builds work without `vite-plugin-node-polyfills`
+**Build system (all three packages):**
+- Webpack → tsc triple-build (same approach as viem): CJS (`dist/_cjs/`), ESM (`dist/_esm/`), types (`dist/_types/`)
+- Nested `package.json` in each output directory disambiguates CJS vs ESM (`{"type":"commonjs"}` / `{"type":"module"}`)
+- UMD bundles removed entirely
+- `"sideEffects": false` declared on all three packages
+- Proper `exports` with `"import"` and `"require"` conditions
 
-### Tree-Shaking Effectiveness (size-limit)
+**TypeScript:**
+- Upgraded from 4.9.5 to 5.9.3 across all packages
+- `moduleResolution: "bundler"` for proper `exports` field resolution
+- `@types/node` upgraded from 16 to 20
 
-| Import | Before (brotli) | After (brotli) | Change |
-|---|---|---|---|
-| Everything (`import *`) | **99.3 kB** | **81.5 kB** | -18% |
-| One function (`import { isValidAddress }`) | **99.2 kB** | **81.4 kB** | -18% |
-| Codec namespace (`import { codec }`) | **99.2 kB** | **81.5 kB** | -18% |
-| Utils namespace (`import { utils }`) | **99.0 kB** | **81.5 kB** | -18% |
+**`@alephium/web3` (deps: 11 → 6):**
+- Removed: `elliptic`, `bn.js`, `blakejs`, `crypto-browserify`, `stream-browserify`, `path-browserify`, `cross-fetch`
+- Added: `@noble/curves`, `@noble/hashes`
+- Node `crypto` → `globalThis.crypto`, `fs` → dynamic `import('fs')`
+- `BigInt.prototype.toJSON` monkey-patch → `stringify` utility (viem-inspired)
+- Swagger codegen template updated to use `stringify` automatically
 
-> Note: size-limit uses esbuild which has limited tree-shaking with barrel `export *` re-exports. Real-world bundlers (Vite/Rollup) with `"sideEffects": false` achieve dramatically better results — see the app benchmarks below.
+**`@alephium/web3-wallet` (deps: 8 → 4):**
+- Removed: `elliptic`, `bip32`, `bip39`, `buffer`, `fs-extra`
+- Added: `@scure/bip32`, `@scure/bip39` (lighter, same `@noble` ecosystem as viem)
+- Deleted `noble-wrapper.ts` (no longer needed with `@scure/bip32`)
+- Deleted `password-crypto.ts` (unused within SDK)
 
-### Package Metrics
-
-| Metric | Before | After | Change |
-|---|---|---|---|
-| Direct dependencies | **11** | **6** | -45% |
-| UMD bundle | **724 kB** | **Removed** | -100% |
-| ESM output | **None** | **Yes** | New |
-| Node polyfill deps | 3 | 0 | -100% |
-| `sideEffects: false` | No | **Yes** | New |
+**`@alephium/walletconnect-provider`:**
+- Removed: webpack, `crypto-browserify`, `stream-browserify`, `path-browserify` (all devDeps)
+- No source changes needed — package had no direct Node builtin imports
 
 ### Real-World App Benchmarks
 
 | App | Before | After | Change |
 |---|---|---|---|
-| node-cli: `node_modules` | 11 MB | 9.9 MB | -10% |
 | node-cli: works | Yes | Yes | — |
 | website: JS bundle (raw) | **742 kB** | **48 kB** | **-93%** |
 | website: JS bundle (gzip) | 204 kB | 14 kB | **-93%** |
@@ -238,38 +232,42 @@ Types resolve correctly, but **only CJS is available** — there is no ESM entry
 | webapp: JS bundle (raw) | **928 kB** | **238 kB** | **-74%** |
 | webapp: JS bundle (gzip) | 261 kB | 74 kB | **-72%** |
 | webapp: polyfill plugin needed | Yes | **No** | Removed |
-| expo: web bundle (raw) | 1.1 MB | TBD | |
-| expo: polyfills needed | 12 workarounds | TBD (likely reduced) | |
+| webapp: Vite dev server works | No | **Yes** | Fixed |
+| expo: workarounds needed | 12 | **4** | **-67%** |
+| expo: works with Expo Go | No | **Yes** | Fixed |
 
-> The website saw the largest improvement because it imports only `isValidAddress` and `NodeProvider` — tree-shaking drops everything else (codec, contract, signer, exchange, etc.). The webapp includes React overhead (~140 kB) but still achieved a 74% reduction. Both apps **no longer need `vite-plugin-node-polyfills`** — the SDK works natively in browser bundlers.
+### Expo app workarounds: before vs after
+
+**Before (12 workarounds):**
+Custom entry point, Buffer polyfill, react-native-get-random-values, react-native-quick-crypto, readable-stream, path-browserify, events, process, fs shim, custom Metro resolver for UMD bundle, extraNodeModules for 6 builtins, node-linker=hoisted, expo-dev-client (dev build required)
+
+**After (4 workarounds):**
+1. `react-native-get-random-values` — provides `crypto.getRandomValues` for `@noble/secp256k1`
+2. Custom `index.js` entry point — loads polyfills before app
+3. `fs` empty shim in Metro config — Metro resolves dynamic `import('fs')` statically
+4. `node-linker=hoisted` in `.npmrc` — Metro incompatible with pnpm strict mode
+
+**No longer needed:** Buffer polyfill, react-native-quick-crypto, readable-stream, path-browserify, events, process, expo-dev-client, custom Metro resolver. **Expo Go works** — no dev build required.
 
 ### What's resolved
 
 | Issue | Status |
 |---|---|
-| No ESM output | **Fixed** — dual CJS/ESM via tsup |
-| UMD browser bundle | **Fixed** — removed, bundlers get ESM |
-| No tree-shaking | **Fixed** — `sideEffects: false` + unbundled ESM output. Website: 742 kB → 48 kB |
-| Redundant crypto libraries (`elliptic` + `@noble/secp256k1`) | **Fixed** — consolidated on `@noble` |
-| Node polyfill dependencies | **Fixed** — all removed from `@alephium/web3` |
+| No ESM output | **Fixed** — dual CJS/ESM via tsc triple-build |
+| UMD browser bundles | **Fixed** — removed from all three packages |
+| No tree-shaking | **Fixed** — `sideEffects: false` + ESM. Website: 742 kB → 48 kB |
+| Redundant crypto (`elliptic` + `@noble/secp256k1`) | **Fixed** — consolidated on `@noble`/`@scure` |
+| Node polyfill dependencies | **Fixed** — all removed |
 | `cross-fetch` polyfill | **Fixed** — using native `fetch` |
 | Node `crypto` import | **Fixed** — using `globalThis.crypto` |
 | `fs` top-level import breaking browsers | **Fixed** — dynamic import |
-| `BigInt.prototype.toJSON` monkey-patch | **Fixed** — replaced with `stringify` utility |
-| `sideEffects: false` | **Fixed** — declared in `package.json` |
+| `BigInt.prototype.toJSON` monkey-patch | **Fixed** — `stringify` utility |
+| `sideEffects: false` | **Fixed** — declared on all three packages |
 | Polyfill plugin needed for Vite | **Fixed** — `vite-plugin-node-polyfills` no longer required |
+| Vite dev server broken | **Fixed** — tsc output resolves correctly |
+| Expo needs dev build | **Fixed** — works with Expo Go |
+| Expo needs 12 workarounds | **Fixed** — reduced to 4 |
 | `bignumber.js` | **Kept** — small, zero-dep, used only for number formatting |
-
-### Still open (other packages)
-
-| Issue | Package | Status |
-|---|---|---|
-| Webpack + UMD bundle | `web3-wallet`, `walletconnect` | Not yet migrated |
-| `elliptic` + `Buffer` usage | `web3-wallet` | Not yet migrated |
-| `bip39` wordlist bloat | `web3-wallet` | Consider `@scure/bip39` |
-| `path-browserify` | `walletconnect` | Not yet migrated |
-| Expo polyfill workarounds | expo benchmark app | Reduced but not fully tested yet |
-| Sub-path exports | `@alephium/web3` | Future enhancement |
 
 ---
 
@@ -278,16 +276,20 @@ Types resolve correctly, but **only CJS is available** — there is no ESM entry
 | Metric | Before | After |
 |---|---|---|
 | `@alephium/web3` dependencies | 11 | **6** |
+| `@alephium/web3-wallet` dependencies | 8 | **4** |
 | Website bundle (one function + balance fetch) | 742 kB | **48 kB (-93%)** |
 | Website bundle (gzip) | 204 kB | **14 kB (-93%)** |
-| Webapp bundle (React, one function + balance fetch) | 928 kB | **238 kB (-74%)** |
+| Webapp bundle (React) | 928 kB | **238 kB (-74%)** |
 | Webapp bundle (gzip) | 261 kB | **74 kB (-72%)** |
-| Node CLI: `node_modules` size | 11 MB | **9.9 MB** |
-| UMD browser bundle | 724 kB | **Removed** |
+| Vite dev server works | No | **Yes** |
+| UMD browser bundles | 3 packages | **Removed** |
 | ESM support | No | **Yes** |
 | `sideEffects: false` | No | **Yes** |
 | Tree-shaking works | No | **Yes** |
 | `vite-plugin-node-polyfills` needed | Yes | **No** |
-| Node polyfill dependencies shipped | 3 | **0** |
+| Node polyfill dependencies | 3+ per package | **0** |
 | `BigInt.prototype.toJSON` global mutation | Yes | **No** |
+| Expo workarounds | 12 | **4** |
+| Expo Go compatible | No | **Yes** |
+| TypeScript version | 4.9.5 | **5.9.3** |
 | Minimum Node version | 14 | **20** |

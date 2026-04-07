@@ -7,11 +7,14 @@ const {
   hashMessage,
   encodeHexSignature
 } = require('@alephium/web3')
+const { PrivateKeyWallet } = require('@alephium/web3-wallet')
 
 const NODE_URL = 'https://node.mainnet.alephium.org'
-const address = process.argv[2] || '1DrDyTr9RpRsQnDnXo2YRiPzPW4ooHX5LLoqXrqfMrpQH'
+const DEVNET_URL = 'http://127.0.0.1:22973'
+const MNEMONIC = 'vault alarm sad mass witness property virus style good flower rice alpha viable evidence run glare pretty scout evil judge enroll refuse another lava'
 
 console.log('--- Address Validation (blake2b, base-x) ---')
+const address = '1DrDyTr9RpRsQnDnXo2YRiPzPW4ooHX5LLoqXrqfMrpQH'
 const valid = isValidAddress(address)
 console.log(`Address: ${address}`)
 console.log(`Valid:   ${valid}`)
@@ -58,20 +61,32 @@ const encoded = encodeHexSignature(
 )
 console.log(`Encoded signature: ${encoded}`)
 
-console.log('\n--- Fetch API (native fetch, no cross-fetch) ---')
-if (!valid) {
-  console.log('Skipping balance fetch (invalid address)')
-  process.exit(1)
-}
+console.log('\n--- HD Wallet from Mnemonic (bip39 + bip32 + @noble) ---')
+const wallet = PrivateKeyWallet.FromMnemonic({
+  mnemonic: MNEMONIC,
+  nodeProvider: new NodeProvider(DEVNET_URL)
+})
+console.log(`Wallet address:    ${wallet.address}`)
+console.log(`Wallet group:      ${wallet.group}`)
+console.log(`Wallet pubkey:     ${wallet.publicKey}`)
 
-const nodeProvider = new NodeProvider(NODE_URL)
-nodeProvider.addresses
+console.log('\n--- Fetch API (native fetch, no cross-fetch) ---')
+console.log('Fetching balance from mainnet...')
+const mainnetProvider = new NodeProvider(NODE_URL)
+mainnetProvider.addresses
   .getAddressesAddressBalance(address)
   .then((balance) => {
-    console.log(`Balance:           ${balance.balanceHint}`)
+    console.log(`Mainnet balance:   ${balance.balanceHint}`)
+
+    console.log('\nFetching wallet balance from devnet...')
+    return wallet.nodeProvider.addresses.getAddressesAddressBalance(wallet.address)
+  })
+  .then((balance) => {
+    console.log(`Devnet balance:    ${balance.balanceHint}`)
     console.log('\nAll checks passed!')
   })
   .catch((err) => {
     console.error(`Failed to fetch balance: ${err.message}`)
+    console.log('(Make sure devnet is running: cd docker && docker compose up -d)')
     process.exit(1)
   })

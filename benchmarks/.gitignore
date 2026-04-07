@@ -5,3 +5,5 @@ apps/*/node_modules/
 apps/*/dist/
 apps/*/.expo/
 apps/*/package-lock.json
+apps/*/.npmrc
+apps/*/pnpm-lock.yaml

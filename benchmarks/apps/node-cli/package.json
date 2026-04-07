@@ -2,7 +2,11 @@
   "name": "bench-node-cli",
   "private": true,
   "version": "0.0.0",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
   "dependencies": {
-    "@alephium/web3": "file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz"
+    "@alephium/web3": "3.0.0-test.0",
+    "@alephium/web3-wallet": "3.0.0-test.0"
   }
 }

@@ -1,138 +1,147 @@
 # Alephium Web3 Monorepo Modernization Roadmap
 
-This document outlines the identified issues with the current `@alephium/web3` monorepo architecture and build setup, along with a phased roadmap to modernize the library, drawing inspiration from modern, heavily optimized libraries like `viem`.
-
-> **Scope:** While the issues and roadmap use `@alephium/web3` as the primary example, the same problems and fixes apply across all packages in the monorepo that share these patterns — notably `@alephium/web3-wallet` and `@alephium/walletconnect-provider`, which have identical webpack/UMD/polyfill setups.
-
-## Identified Issues
-
-### 1. Lack of Native ES Modules (ESM) Support
-The project is strictly CommonJS (CJS).
-* **`package.json`**: Specifies `"type": "commonjs"`.
-* **`tsconfig.json`**: Compiles to `"module": "commonjs"`.
-* **Issue**: Modern JavaScript tooling (Vite, Rollup, Webpack 5) and native browser/Node environments rely heavily on ESM for aggressive tree-shaking (removing unused code). By only providing CJS, consumers using modern bundlers often end up including significantly more code than they actually use.
-
-### 2. Monolithic UMD Browser Build vs Tree-Shaking
-The library uses `webpack` to create a monolithic `alephium-web3.min.js` file for browser environments.
-* **Issue**: In `package.json`, the `"browser"` and `"default"` export map fields point to this minified Webpack bundle. This completely defeats tree-shaking. If a developer imports a single utility function from `@alephium/web3` in a React application, the bundler is forced to pull in the entire minified library because it acts as a single opaque file. Modern libraries rely on exposing standard ESM files and letting the consumer's bundler (like Next.js or Vite) do the minification and tree-shaking.
-
-### 3. Heavy Node.js Polyfills
-The library was likely written with Node.js built-in modules in mind, requiring heavy polyfills for the browser.
-* **`webpack.config.js`**: Reveals that `stream-browserify` and `crypto-browserify` are being bundled into the browser build.
-* **Issue**: These polyfills are massive. `crypto-browserify` alone adds immense weight. Modern SDKs avoid Node-specific built-ins in their core logic, instead relying on standard Web APIs (like the Web Crypto API, which is now supported in modern Node, browsers, and edge runtimes) or lightweight isomorphic packages (like the `@noble` cryptography suites, which you already partially use via `@noble/secp256k1`).
-* **Additional polyfills**: `@alephium/web3-wallet` also bundles the `buffer` npm package and `@alephium/walletconnect-provider` uses `path-browserify`. These should all be replaced with native alternatives (`Uint8Array` instead of `Buffer`, etc.).
-
-### 4. Suboptimal `exports` Configuration
-The `"exports"` field in `package.json` is not structured for modern module resolution.
-```json
-// Current
-"exports": {
-  "node": {
-    "types": "./dist/src/index.d.ts",
-    "default": "./dist/src/index.js"
-  },
-  "default": {
-    "types": "./dist/src/index.d.ts",
-    "default": "./dist/alephium-web3.min.js"
-  }
-}
-```
-* **Issue**: It lacks the `"import"` (ESM) and `"require"` (CJS) conditions. It does not clearly define where types live for different environments, which often causes TypeScript resolution issues (e.g., the infamous "Are the Types Wrong" errors).
-
-### 5. Redundant/Heavy Math Dependencies
-The package depends on both `bignumber.js` and `bn.js`.
-* **Issue**: `BigInt` is now a native JavaScript standard (included in your `es2020` TS target). Relying heavily on large legacy math libraries bloats the bundle size unnecessarily.
-
-### 6. Redundant Cryptography Libraries
-The package depends on both `@noble/secp256k1` and `elliptic` (which itself pulls in `bn.js`).
-* **`@alephium/web3`**: Lists both `@noble/secp256k1` and `elliptic` as dependencies.
-* **`@alephium/web3-wallet`**: Also depends on both.
-* **Issue**: `elliptic` is a large, legacy library. The `@noble` suite is its modern, audited, zero-dependency replacement. Keeping both means duplicate functionality and unnecessary bundle weight. `elliptic` should be fully removed in favor of `@noble/secp256k1`.
-
-### 7. Global Side Effect: `BigInt.prototype.toJSON` Monkey-Patch
-The entry point (`src/index.ts`) patches `BigInt.prototype.toJSON` on import.
-* **Issue**: This is a global side effect — it modifies a built-in prototype for *all* code in the application, not just the library. It directly conflicts with declaring `"sideEffects": false` in `package.json`, which is critical for tree-shaking. A consumer who imports any single export from `@alephium/web3` silently gets this global mutation. This needs to be replaced with an explicit serialization strategy (e.g., a custom `replacer` function or a wrapper utility).
-
-### 8. Outdated Node.js Engine Requirement
-The `engines` field specifies `node >= 14.0.0`.
-* **Issue**: Node 14 and 16 are end-of-life. Requiring such old versions forces the library to polyfill features that are natively available in modern Node (>= 18): native `fetch` (eliminating `cross-fetch`), `crypto.subtle` (Web Crypto API), and better ESM support. Bumping the minimum version unlocks significant simplifications.
+This document outlines the identified issues with the original `@alephium/web3` monorepo architecture and build setup, the phased roadmap to modernize the library (drawing inspiration from [viem](https://github.com/wevm/viem)), and the current status of each step.
 
 ---
 
-## Proposed Roadmap for Modernization
+## Identified Issues (original state)
 
-To achieve a lightweight, highly tree-shakeable, and environment-agnostic developer experience, we will execute this modernization in phases. Each phase applies across all affected packages in the monorepo, not just `@alephium/web3`.
+1. **No ESM output** — strictly CommonJS, defeating tree-shaking in modern bundlers
+2. **Monolithic UMD browser bundles** — webpack-generated `alephium-web3.min.js` forced on all browser consumers
+3. **Heavy Node.js polyfills** — `crypto-browserify`, `stream-browserify`, `path-browserify`, `buffer` shipped as dependencies
+4. **Suboptimal `exports` configuration** — missing `"import"`/`"require"` conditions, no proper type resolution
+5. **Redundant math dependencies** — both `bignumber.js` and `bn.js`
+6. **Redundant cryptography libraries** — both `elliptic` and `@noble/secp256k1`
+7. **Global side effect** — `BigInt.prototype.toJSON` monkey-patch on import, blocking `"sideEffects": false`
+8. **Outdated Node.js requirement** — `node >= 14.0.0`
 
-### Phase 0: Benchmarking Baseline
-Before making any changes, capture concrete "before" metrics so we can measure the impact of each subsequent phase and present results to the team.
+---
 
-#### 0a. size-limit
-Add `size-limit` to `@alephium/web3` to measure the real cost of importing from the package through a bundler. Configured scenarios:
-* **Full import** (`import * from '@alephium/web3'`) — total cost of the library
-* **Single function** (`import { isValidAddress }`) — shows tree-shaking effectiveness (or lack thereof)
-* **Namespace imports** (`{ codec }`, `{ utils }`) — cost of individual sub-modules
+## Completed Work
 
-Since the package is currently CJS-only, all named import scenarios will pull the full module graph. This IS the expected baseline — demonstrating zero tree-shaking.
+### Phase 0: Benchmarking Baseline ✅
 
-#### 0b. Packaging Health Reports
-Run `publint` and `@arethetypeswrong/cli` against the published package to produce a health report of packaging and type resolution issues. These generate clear pass/fail checklists that visually demonstrate the current state vs. a clean report after modernization.
+Captured "before" metrics with four benchmark apps (node-cli, website, webapp, expo) and tooling (size-limit, publint, attw). Results documented in `benchmarks/results/baseline.md`.
 
-#### 0c. Dependency Analysis
-Capture direct dependency count, transitive dependency tree, UMD bundle size (raw + gzip), and npm tarball size.
+A Verdaccio-based local registry script (`benchmarks/test-local.sh`) enables testing published packages exactly as consumers would experience them from npm.
 
-#### 0d. Cross-Environment Benchmark Apps
-Four minimal apps that each import `isValidAddress` from `@alephium/web3` and validate a hardcoded address. They serve as both compatibility tests and size benchmarks:
+### Phase 1: Environment-Agnostic Core ✅
 
-| App | Environment | What's measured |
+#### `@alephium/web3` (dependencies: 11 → 6)
+- **1a.** Node.js minimum bumped to >= 20
+- **1b.** `cross-fetch` removed — using native `fetch`
+- **1c.** Crypto consolidated on `@noble`: `elliptic` → `@noble/secp256k1`, `blakejs` → `@noble/hashes/blake2b`, added `@noble/curves` for p256/ed25519
+- **1d.** `bn.js` removed (was only used by `elliptic`). `bignumber.js` kept — small, zero-dep, used only for decimal formatting
+- **1e.** All Node polyfills removed (`crypto-browserify`, `stream-browserify`, `path-browserify`). Node `crypto` import replaced with `globalThis.crypto`. `fs` import made dynamic (`await import('fs')`)
+- **1f.** `BigInt.prototype.toJSON` monkey-patch removed — replaced with `stringify` utility (viem-inspired). Swagger codegen template (`configs/http-client.eta`) captures the base template output and replaces `JSON.stringify` with `stringify` automatically
+
+#### `@alephium/web3-wallet` (dependencies: 8 → 4)
+- `elliptic` → `@noble/secp256k1.utils.randomPrivateKey()`
+- `bip39` → `@scure/bip39` (lighter, no wordlist bloat)
+- `bip32` → `@scure/bip32` (eliminated `noble-wrapper.ts` adapter entirely)
+- `password-crypto.ts` deleted (unused within SDK)
+- `buffer`, `fs-extra`, `crypto-browserify`, `stream-browserify` removed
+
+#### `@alephium/walletconnect-provider`
+- No source changes needed — had no direct Node builtin imports
+- Polyfill devDependencies removed (`crypto-browserify`, `stream-browserify`, `path-browserify`)
+
+### Phase 2: Modern Build Tooling ✅
+
+Replaced webpack with **tsc dual-build** (same approach as viem) across all three packages:
+
+- Two `tsc` passes: CJS → `dist/_cjs/`, ESM → `dist/_esm/`
+- Each output directory has a nested `package.json` (`{"type":"commonjs"}` / `{"type":"module","sideEffects":false}`)
+- `--declaration` emits `.d.ts` alongside `.js` in both directories
+- UMD bundles removed entirely
+
+**Why tsc instead of tsup:** tsup was tried first but had ESM resolution issues — bare import paths like `"./api"` in `.mjs` files resolved to `.js` (CJS) instead of `.mjs`, breaking Vite's dev server. The tsc dual-build approach avoids this by using `.js` everywhere and disambiguating via the nested `package.json` `"type"` field.
+
+### Phase 3: Package Configuration ✅
+
+- **`exports` field** — proper `"import"`/`"require"` conditions with separate type declarations per condition, avoiding FalseCJS/FalseESM type issues
+- **`"sideEffects": false`** — declared on all three packages
+- **`"type": "commonjs"`** — declared on all three packages (Node.js performance hint, prevents auto-detection)
+- **`main`/`module`/`types`** — fallback fields for legacy consumers
+
+### TypeScript 5 Upgrade ✅
+
+- TypeScript 4.9.5 → 5.9.3 across all 8 packages
+- `moduleResolution: "bundler"` for proper `exports` field resolution
+- `@types/node` 16 → 20
+- ts-jest configured with CJS override for test compatibility
+
+### Packaging Quality Checks ✅
+
+- `publint` + `@arethetypeswrong/cli` added to web3, web3-wallet, and walletconnect
+- `pnpm check` runs both tools; `pnpm -r run --if-present check` from root
+- `internal-resolution-error` ignored in attw — tsc doesn't rewrite import paths in `.d.ts` files, so bare specifiers fail strict `node16` ESM resolution. This is a known limitation affecting most dual CJS/ESM packages including viem. `node10`, `node16 (from CJS)`, and `bundler` all resolve correctly.
+
+### Results
+
+| Metric | Before | After |
 |---|---|---|
-| `node-cli` | Node.js (CJS) | `node_modules` size, startup time, runs without errors |
-| `website` | Vite (vanilla JS) | Production JS bundle size (raw + gzip), polyfills required |
-| `webapp` | Vite + React | Production JS bundle size (raw + gzip), polyfills required |
-| `expo` | Expo (React Native) | Bundle size, whether it builds at all without polyfill hacks |
+| Website bundle (vanilla JS) | 742 kB | **48 kB (-93%)** |
+| Website bundle (gzip) | 204 kB | **14 kB (-93%)** |
+| Webapp bundle (React) | 928 kB | **238 kB (-74%)** |
+| Webapp bundle (gzip) | 261 kB | **74 kB (-72%)** |
+| `@alephium/web3` dependencies | 11 | **6** |
+| `@alephium/web3-wallet` dependencies | 8 | **4** |
+| Vite dev server works | No | **Yes** |
+| UMD bundles | 3 packages | **Removed** |
+| ESM support | No | **Yes** |
+| Tree-shaking works | No | **Yes** |
+| `vite-plugin-node-polyfills` needed | Yes | **No** |
+| `BigInt.prototype.toJSON` mutation | Yes | **No** |
+| Expo workarounds | 12 | **4** |
+| Expo Go compatible | No | **Yes** |
+| TypeScript | 4.9.5 | **5.9.3** |
+| Node.js minimum | 14 | **20** |
 
-These apps live in `benchmarks/apps/` and reference the local `@alephium/web3` via a packed tarball (mirroring what consumers get from npm). A `benchmarks/run.sh` script orchestrates all measurements and saves results to `benchmarks/results/`.
+---
 
-The same benchmarks will be re-run after each phase to track progress.
+## Next Steps
 
-### Phase 1: Environment-Agnostic Core (The "Diet")
-Before changing how the code is built, we must change what code is built to ensure it runs natively everywhere.
+### High Priority
 
-#### 1a. Bump Minimum Node.js Version to >= 20
-Update the `engines` field in the root `package.json` to require Node >= 20 (the oldest active LTS; Node 18 is EOL since April 2025). This unlocks native `fetch`, `globalThis.crypto.subtle`, and better ESM support, dramatically reducing the polyfill surface for subsequent steps.
+#### 1. CI pipeline updates
+- Ensure the `update-schemas` codegen check works with the new template
+- Ensure the full test suite passes in CI (Docker services for integration tests)
+- Run `pnpm check` (publint + attw) in CI
+- Add `size-limit` checks with budgets per export
 
-#### 1b. Remove `cross-fetch`
-With Node >= 18, `fetch` is globally available in Node, browsers, and edge runtimes. Remove the `cross-fetch` dependency from `@alephium/web3` and any other packages that use it (`@alephium/cli`). For consumers who need to customize the fetch implementation (e.g., for retries or proxies), consider exposing an optional fetch injection point (similar to how viem accepts a custom `transport`).
+#### 2. Sub-path exports for `@alephium/web3`
+- Expose `@alephium/web3/codec`, `@alephium/web3/address`, `@alephium/web3/utils`, etc.
+- Gives bundlers explicit module boundaries for even better tree-shaking
+- Follows viem's pattern
 
-#### 1c. Consolidate Cryptography on `@noble`
-Standardize on the `@noble` suite of isomorphic, audited, zero-dependency crypto libraries:
-* **Remove `elliptic`** from all packages — replace with `@noble/secp256k1` (already a dependency).
-* **Remove `blakejs`** — replace with `@noble/hashes/blake2b`.
-* **Remove `crypto-browserify`** and `stream-browserify` — the `@noble` libraries and Web Crypto API eliminate the need for Node `crypto` polyfills entirely.
+### Medium Priority
 
-#### 1d. Migrate to Native `BigInt`
-Strip out `bn.js` entirely — it was only used by `elliptic` which has been replaced by `@noble/secp256k1`. **`bignumber.js` is kept** for now: it's a small, zero-dependency library used only in `number.ts` for decimal formatting with thousand separators (`toFormat`). Replacing it would require writing and testing custom decimal rounding and formatting logic — the cost/benefit doesn't justify it at this stage. It can be revisited later.
+#### 3. Migrate Jest → Vitest
+- Unblocks `@noble` v2 upgrade (ESM-only packages)
+- Faster test execution, native ESM support
+- Affects all test files across the monorepo
 
-#### 1e. Remove Remaining Node.js Polyfills
-* **`@alephium/web3`: Done.** The core package has no `Buffer` usage in its source code. The `Buffer`-related React Native crashes were caused by dependencies (`crypto-browserify`, `elliptic`) which have been removed in 1c. The polyfill packages (`crypto-browserify`, `stream-browserify`, `path-browserify`) have also been removed from dependencies.
-* **`@alephium/web3-wallet`** (future): Still depends on `buffer` explicitly and uses `Buffer` in its source. Replace with `Uint8Array` and `TextEncoder`/`TextDecoder`. Also depends on `bip39` which ships large wordlist JSON files for every language — consider replacing with `@scure/bip39` (lighter, from the same `@noble`/`@scure` ecosystem that viem uses) or ensuring only the English wordlist is included.
-* **`@alephium/walletconnect-provider`** (future): Still uses `path-browserify`. Eliminate the path manipulation or use simple string operations.
+#### 4. Upgrade to `@noble` v2
+- Requires Vitest first
+- `@noble/hashes` 1.6.1 → 2.x, `@noble/curves` 1.6.0 → 2.x
+- Update import paths (`blake2b` → `blake2.js`, `sha256` → `sha2.js`, `p256` → `nist.js`)
 
-#### 1f. Eliminate the `BigInt.prototype.toJSON` Monkey-Patch
-**Done.** Replaced with a `stringify` utility (in `src/utils/stringify.ts`) — a drop-in replacement for `JSON.stringify` that converts BigInt values to strings via a replacer function, following the same approach as viem. All internal `JSON.stringify` calls have been replaced with `stringify`, including in the auto-generated API files. The swagger-typescript-api template (`configs/http-client.eta`) injects the `stringify` import, and a `postprocess-schemas` script automatically replaces `JSON.stringify` with `stringify` after code generation. The WalletConnect provider sanitizes params with `JSON.parse(stringify(...))` before passing them to the WalletConnect client. `"sideEffects": false` is now declared in `package.json`.
+#### 5. Replace `@noble/secp256k1` v1.7.1 with `@noble/curves/secp256k1`
+- Eliminates a separate dependency
+- Requires signing code refactor (different API)
 
-### Phase 2: Modern Library Build Tooling
-Move away from using Webpack as a library bundler.
-1. **Adopt `tsup`:** Replace Webpack with `tsup` (uses esbuild under the hood). For `@alephium/web3` this is done — tsup emits both CJS (`.cjs`) and ESM (`.mjs`) from a single config.
-2. **Dual-Publishing:** tsup emits `dist/index.cjs` and `dist/index.mjs` with proper `exports` conditions (`"import"` and `"require"`).
-3. **Drop the UMD bundle:** The `"browser"` field and `alephium-web3.min.js` are removed. Consumer bundlers now get ESM and perform their own tree-shaking and minification.
-4. **Type declarations:** Currently using `tsc --emitDeclarationOnly` alongside tsup because tsup's DTS bundler renames internal types, causing type mismatches with other workspace packages (`web3-wallet`, etc.) that still resolve types from `dist/`. Once those packages are also migrated to tsup, we can switch to tsup's built-in `dts: true` for cleaner output (`dist/index.d.ts` and `dist/index.d.mts` instead of `dist/types/src/index.d.ts`).
+### Low Priority
 
-### Phase 3: Optimize Package Configuration
-Inform bundlers how to efficiently consume the library.
-1. **Proper `exports` field:** Done. `package.json` now has `"import"` and `"require"` conditions with correct type declarations for each.
-2. **Declare `"sideEffects": false`:** Done. The `BigInt.prototype.toJSON` monkey-patch has been replaced with a `stringify` utility, so the package is now side-effect-free.
-3. **Sub-path exports** (future): Expose logical sub-modules as separate entry points (`@alephium/web3/codec`, `@alephium/web3/utils`, etc.) so consumers can import only what they need without relying solely on tree-shaking. This follows the pattern used by viem, wagmi, and other modern libraries.
+#### 6. Modernize `@alephium/web3-react` and `@alephium/get-extension-wallet`
+- Already use Rollup (relatively modern)
+- Could switch to tsc dual-build for consistency
+- Not urgent — no polyfill/UMD problems
 
-### Phase 4: CI Validation and Size Tracking
-1. **Type checking:** Add `@arethetypeswrong/cli` and `publint` to the CI pipeline. These tools verify that the `package.json` exports and TypeScript definitions are correctly formed for all environments. Also run these during `prepublishOnly` so issues are caught locally before publishing.
-2. **Bundle size limits:** Introduce a tool like `size-limit` in the CI to track the real-world bundle size impact of exports and ensure future PRs don't re-introduce bloat.
+#### 7. Remove `bignumber.js`
+- Small, zero-dep, used only for number formatting
+- Low impact on bundle size
+
+#### 8. Size tracking in CI
+- `size-limit` checks with budgets per export
+- Track bundle size over time to prevent regressions

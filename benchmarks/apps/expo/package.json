@@ -8,29 +8,21 @@
     "ios": "expo run:ios",
     "android": "expo run:android",
     "web": "expo start --web",
-    "build:web": "npx expo export --platform web --output-dir dist",
-    "build:bundle": "npx react-native bundle --platform ios --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output dist/bundle.js"
+    "build:web": "npx expo export --platform web --output-dir dist"
   },
   "dependencies": {
-    "@alephium/web3": "file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz",
+    "@alephium/web3": "3.0.0-test.0",
+    "@alephium/web3-wallet": "3.0.0-test.0",
     "@expo/metro-runtime": "~55.0.7",
-    "buffer": "^6.0.3",
-    "events": "^3.3.0",
     "expo": "~55.0.0",
-    "expo-crypto": "^55.0.10",
-    "expo-dev-client": "^55.0.19",
-    "path-browserify": "^1.0.1",
-    "process": "^0.11.10",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.4",
     "react-native-get-random-values": "^2.0.0",
-    "react-native-quick-crypto": "^1.0.18",
-    "react-native-web": "^0.21.0",
-    "readable-stream": "^4.7.0"
+    "react-native-web": "^0.21.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.7.0"
   }
 }

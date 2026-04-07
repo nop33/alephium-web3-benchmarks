@@ -7,52 +7,39 @@ import {
   hashMessage,
   encodeHexSignature
 } from '@alephium/web3'
+import { PrivateKeyWallet } from '@alephium/web3-wallet'
 
 const NODE_URL = 'https://node.mainnet.alephium.org'
+const DEVNET_URL = 'http://127.0.0.1:22973'
+const MNEMONIC =
+  'vault alarm sad mass witness property virus style good flower rice alpha viable evidence run glare pretty scout evil judge enroll refuse another lava'
+
 const nodeProvider = new NodeProvider(NODE_URL)
 
 const input = document.getElementById('address')
 const result = document.getElementById('result')
 const balanceEl = document.getElementById('balance')
 const cryptoEl = document.getElementById('crypto')
+const walletEl = document.getElementById('wallet')
 
-// Test crypto functions on load to verify @noble dependencies work in browser
+// Test crypto functions on load
 function testCrypto() {
   const checks = []
   const testPrivKey = '8fc5f0d120b730f97f6cea5f02ae4a6ee7bf451d9261c623ea69d85e870201d2'
 
-  // @noble/secp256k1
-  const pubKey = publicKeyFromPrivateKey(testPrivKey, 'default')
-  checks.push(`secp256k1: ${pubKey.slice(0, 20)}...`)
+  checks.push(`secp256k1: ${publicKeyFromPrivateKey(testPrivKey, 'default').slice(0, 20)}...`)
+  checks.push(`p256: ${publicKeyFromPrivateKey(testPrivKey, 'gl-secp256r1').slice(0, 20)}...`)
+  checks.push(`ed25519: ${publicKeyFromPrivateKey(testPrivKey, 'gl-ed25519').slice(0, 20)}...`)
+  checks.push(`blake2b: ${hashMessage('test', 'blake2b').slice(0, 20)}...`)
+  checks.push(`sha256: ${hashMessage('test', 'sha256').slice(0, 20)}...`)
 
-  // @noble/curves/p256
-  const pubKeyP256 = publicKeyFromPrivateKey(testPrivKey, 'gl-secp256r1')
-  checks.push(`p256: ${pubKeyP256.slice(0, 20)}...`)
-
-  // @noble/curves/ed25519
-  const pubKeyEd = publicKeyFromPrivateKey(testPrivKey, 'gl-ed25519')
-  checks.push(`ed25519: ${pubKeyEd.slice(0, 20)}...`)
-
-  // @noble/hashes/blake2b
-  const hashB = hashMessage('test', 'blake2b')
-  checks.push(`blake2b: ${hashB.slice(0, 20)}...`)
-
-  // @noble/hashes/sha256
-  const hashS = hashMessage('test', 'sha256')
-  checks.push(`sha256: ${hashS.slice(0, 20)}...`)
-
-  // Signature verification
   const txHash = '8fc5f0d120b730f97f6cea5f02ae4a6ee7bf451d9261c623ea69d85e870201d2'
   const pk = '02625b26ae1c5f7986475009e4037b3e6fe6320fde3c3f3332bea11ecadc35dd13'
-  const sig = '78471e7c97e558c98ac307ef699ed535ece319102fc69ea416dbb44fbb3cbf9c42dbfbf4ce73eb68c5e0d66122eb25d2ebe1cf9e37ef4c4f4e7a2ed35de141bc'
-  const sigValid = transactionVerifySignature(txHash, pk, sig)
-  checks.push(`sig verify: ${sigValid}`)
+  const sig =
+    '78471e7c97e558c98ac307ef699ed535ece319102fc69ea416dbb44fbb3cbf9c42dbfbf4ce73eb68c5e0d66122eb25d2ebe1cf9e37ef4c4f4e7a2ed35de141bc'
+  checks.push(`sig verify: ${transactionVerifySignature(txHash, pk, sig)}`)
+  checks.push(`address: ${addressFromPublicKey(publicKeyFromPrivateKey(testPrivKey, 'default')).slice(0, 20)}...`)
 
-  // Address derivation (blake2b + base58)
-  const addr = addressFromPublicKey(pubKey)
-  checks.push(`address: ${addr.slice(0, 20)}...`)
-
-  // Signature encoding
   const encoded = encodeHexSignature(
     '934b1ea10a4b3c1757e2b0c017d0b6143ce3c9a7e6a4a49860d7a6ab210ee3d8',
     '2442ce9d2b916064108014783e923ec36b49743e2ffa1c4496f01a512aafd9e5'
@@ -60,6 +47,29 @@ function testCrypto() {
   checks.push(`sig encode: ${encoded.slice(0, 20)}...`)
 
   cryptoEl.textContent = 'Crypto checks: ' + checks.join(' | ')
+}
+
+// Test HD wallet derivation from mnemonic
+function testWallet() {
+  try {
+    const wallet = PrivateKeyWallet.FromMnemonic({
+      mnemonic: MNEMONIC,
+      nodeProvider: new NodeProvider(DEVNET_URL)
+    })
+    walletEl.textContent = `Wallet from mnemonic: ${wallet.address} (group ${wallet.group})`
+
+    // Try fetching devnet balance
+    wallet.nodeProvider.addresses
+      .getAddressesAddressBalance(wallet.address)
+      .then((b) => {
+        walletEl.textContent += ` | Devnet balance: ${b.balanceHint}`
+      })
+      .catch(() => {
+        walletEl.textContent += ' | Devnet not available'
+      })
+  } catch (err) {
+    walletEl.textContent = `Wallet error: ${err.message}`
+  }
 }
 
 async function validate() {
@@ -79,5 +89,6 @@ async function validate() {
 }
 
 testCrypto()
+testWallet()
 input.addEventListener('input', validate)
 validate()

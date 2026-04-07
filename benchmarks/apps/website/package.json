@@ -9,11 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@alephium/web3": "file:../../../alephium-web3/packages/web3/alephium-web3-2.0.10.tgz"
+    "@alephium/web3": "3.0.0-test.0",
+    "@alephium/web3-wallet": "3.0.0-test.0"
   },
   "devDependencies": {
-    "vite": "^6.0.0",
-    "vite-plugin-node-polyfills": "^0.26.0"
+    "typescript": "^5.9.3",
+    "vite": "^6.0.0"
   },
   "packageManager": "pnpm@10.33.0"
 }
