@@ -3,21 +3,89 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Alephium Address Validator</title>
+    <title>Alephium Web3 SDK — Website Benchmark</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a2e; background: #f8f9fa; line-height: 1.6; }
+      .app { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem; }
+      h1 { font-size: 1.8rem; margin-bottom: 0.25rem; }
+      h2 { font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.5rem; border-bottom: 2px solid #e9ecef; padding-bottom: 0.25rem; }
+      h3 { font-size: 1.05rem; margin-top: 1.25rem; margin-bottom: 0.25rem; color: #495057; }
+      h4 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+      .subtitle { color: #6c757d; margin-bottom: 1rem; }
+      .desc { color: #6c757d; font-size: 0.85rem; margin-bottom: 0.75rem; }
+      code { background: #e9ecef; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.85em; }
+      dl { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; margin-bottom: 1rem; }
+      dt { font-weight: 600; font-size: 0.9rem; color: #495057; }
+      dd { word-break: break-all; }
+      .mono { font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; }
+      .small { font-size: 0.75rem; color: #6c757d; }
+      input { width: 100%; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px; font-size: 0.9rem; font-family: monospace; margin-bottom: 0.75rem; }
+      .check { margin-bottom: 1rem; padding: 0.75rem; background: #fff; border: 1px solid #e9ecef; border-radius: 6px; }
+      .check h4 { margin-bottom: 0.25rem; }
+      .result { display: block; word-break: break-all; font-size: 0.8rem; color: #495057; background: #f1f3f5; padding: 0.4rem 0.6rem; border-radius: 4px; margin-top: 0.35rem; }
+    </style>
   </head>
   <body>
-    <h1>Alephium Address Validator</h1>
-    <input
-      type="text"
-      id="address"
-      placeholder="Enter address"
-      value="1DrDyTr9RpRsQnDnXo2YRiPzPW4ooHX5LLoqXrqfMrpQH"
-      style="width: 400px"
-    />
-    <p id="result"></p>
-    <p id="balance"></p>
-    <p id="crypto" style="font-size: 12px; color: #666"></p>
-    <p id="wallet" style="font-size: 12px; color: #666"></p>
+    <div class="app">
+      <h1>Alephium Web3 SDK Benchmark</h1>
+      <p class="subtitle">
+        Testing <code>@alephium/web3</code> and <code>@alephium/web3-wallet</code> in a plain Vite website.
+        No framework. No polyfill plugins. Tree-shaking enabled.
+      </p>
+
+      <h2>HD Wallet from Mnemonic</h2>
+      <p class="desc">
+        Derives an HD wallet from a BIP-39 mnemonic using <code>@scure/bip39</code> and <code>@scure/bip32</code>.
+      </p>
+      <dl>
+        <dt>Mnemonic</dt>
+        <dd class="mono small" id="mnemonic">...</dd>
+      </dl>
+
+      <h3>Default Address (secp256k1, group <span id="default-group">...</span>)</h3>
+      <p class="desc">Standard Alephium address derived with the <code>default</code> key type via BIP-44 path <code>m/44'/1234'/0'/0/0</code>.</p>
+      <dl>
+        <dt>Address</dt><dd class="mono" id="default-address">...</dd>
+        <dt>Valid</dt><dd id="default-valid">...</dd>
+        <dt>Public Key</dt><dd class="mono small" id="default-pubkey">...</dd>
+        <dt>Mainnet</dt><dd id="default-mainnet">...</dd>
+        <dt>Testnet</dt><dd id="default-testnet">...</dd>
+        <dt>Devnet</dt><dd id="default-devnet">...</dd>
+      </dl>
+
+      <h3>Groupless Address (gl-secp256k1)</h3>
+      <p class="desc">Not tied to a specific group. Derived with <code>gl-secp256k1</code> key type via <code>m/44'/1234'/2'/0/0</code>.</p>
+      <dl>
+        <dt>Address</dt><dd class="mono" id="gl-address">...</dd>
+        <dt>Valid</dt><dd id="gl-valid">...</dd>
+        <dt>Public Key</dt><dd class="mono small" id="gl-pubkey">...</dd>
+        <dt>Mainnet</dt><dd id="gl-mainnet">...</dd>
+        <dt>Testnet</dt><dd id="gl-testnet">...</dd>
+        <dt>Devnet</dt><dd id="gl-devnet">...</dd>
+      </dl>
+
+      <h2>Cryptographic Operations</h2>
+      <p class="desc">All use isomorphic <code>@noble</code> libraries — no Node.js polyfills.</p>
+
+      <div class="check"><h4>secp256k1 Public Key</h4><p class="desc">Elliptic curve used by Bitcoin and Alephium. Compressed public key via @noble/secp256k1.</p><code class="result" id="secp256k1">...</code></div>
+      <div class="check"><h4>Schnorr Public Key (BIP-340)</h4><p class="desc">Schnorr signature scheme. Uses x-coordinate only.</p><code class="result" id="schnorr">...</code></div>
+      <div class="check"><h4>P-256 (NIST) Public Key</h4><p class="desc">NIST P-256 curve for WebAuthn. Via @noble/curves.</p><code class="result" id="p256">...</code></div>
+      <div class="check"><h4>Ed25519 Public Key</h4><p class="desc">Edwards curve for modern protocols. Via @noble/curves.</p><code class="result" id="ed25519">...</code></div>
+      <div class="check"><h4>Blake2b Hash</h4><p class="desc">Blake2b-256 via @noble/hashes. Alephium's primary hash function.</p><code class="result" id="blake2b">...</code></div>
+      <div class="check"><h4>SHA-256 Hash</h4><p class="desc">SHA-256 via @noble/hashes. Used in Bitcoin-style signing.</p><code class="result" id="sha256">...</code></div>
+      <div class="check"><h4>Address Derivation</h4><p class="desc">Public key → Blake2b hash → Base58 encoding.</p><code class="result" id="addr-derive">...</code></div>
+      <div class="check"><h4>Signature Encoding</h4><p class="desc">Normalizes and encodes r,s components into a 64-byte signature.</p><code class="result" id="sig-encode">...</code></div>
+      <div class="check"><h4>Signature Verification</h4><p class="desc">Verifies ECDSA signature against tx hash and public key.</p><code class="result" id="sig-verify">...</code></div>
+
+      <h2>Address Lookup (native fetch)</h2>
+      <p class="desc">Uses native <code>fetch</code> via <code>NodeProvider</code>. No <code>cross-fetch</code> polyfill.</p>
+      <input id="lookup-input" value="1DrDyTr9RpRsQnDnXo2YRiPzPW4ooHX5LLoqXrqfMrpQH" />
+      <dl>
+        <dt>Valid</dt><dd id="lookup-valid">...</dd>
+        <dt>Mainnet Balance</dt><dd id="lookup-balance">...</dd>
+      </dl>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
