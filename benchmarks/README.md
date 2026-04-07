@@ -1,54 +1,66 @@
 # Alephium Web3 Benchmarks
 
-Benchmarking infrastructure for the `@alephium/web3` monorepo modernization. These benchmarks capture bundle size, tree-shaking effectiveness, packaging health, and cross-environment compatibility.
+Benchmark apps and tooling for measuring the impact of the `@alephium/web3` monorepo modernization. Tests bundle size, tree-shaking, cross-environment compatibility, and SDK functionality.
 
-## What's measured
+## Benchmark Apps
 
-### size-limit (in @alephium/web3 package)
-Measures the real cost of importing from `@alephium/web3` through a bundler — full import, single function, and namespace imports.
+Four apps that exercise the same SDK features across different environments:
 
-### Packaging health
-- **publint** — validates `package.json` configuration
-- **@arethetypeswrong/cli** — validates TypeScript types resolve correctly in all environments
-
-### Dependency analysis
-- Direct and transitive dependency counts
-- UMD bundle size (raw + gzip)
-
-### Benchmark apps
-Four minimal apps that each import `isValidAddress` from `@alephium/web3` and validate a hardcoded address. They measure the SDK's real-world footprint across environments:
-
-| App | Environment | What's measured |
+| App | Environment | Build Tool |
 |---|---|---|
-| `node-cli` | Node.js (CJS) | node_modules size, startup time |
-| `website` | Vite (vanilla JS) | Production bundle size |
-| `webapp` | Vite + React | Production bundle size |
-| `expo` | Expo (React Native) | Bundle size, build success, workarounds required |
+| `node-cli` | Node.js (CJS) | None (direct `require`) |
+| `website` | Vite (vanilla JS) | Vite |
+| `webapp` | Vite + React | Vite |
+| `expo` | Expo (React Native) | Metro |
 
-### Expo app complexity
+### What each app tests
 
-The expo benchmark app deserves special attention. Getting `@alephium/web3` to work in React Native required **12 workarounds** including:
-- Custom entry point and polyfills (`index.js`, `polyfills.js`)
-- Native crypto module (`react-native-quick-crypto`) because `crypto-browserify` fails at module evaluation time
-- Custom Metro resolver to bypass the UMD browser bundle (which references `self`, undefined in RN)
-- Empty `fs` shim, `Buffer` global polyfill, `events`/`stream`/`path` polyfills
-- pnpm `node-linker=hoisted` (Metro incompatible with strict symlinks)
-- Dev build required (incompatible with Expo Go)
+Every app derives an HD wallet from a mnemonic, generates both a default and groupless address, fetches balances from mainnet/testnet/devnet, and runs all cryptographic operations:
 
-This complexity is fully documented in `results/baseline.md` and is a key motivator for the modernization work.
+- **HD wallet derivation** — `@scure/bip39` + `@scure/bip32` via `PrivateKeyWallet.FromMnemonic`
+- **Key derivation** — secp256k1, Schnorr (BIP-340), P-256 (NIST), Ed25519 via `@noble`
+- **Hashing** — Blake2b and SHA-256 via `@noble/hashes`
+- **Signature encoding and verification** — via `@noble/secp256k1`
+- **Address derivation and validation** — Blake2b + Base58
+- **Balance fetching** — native `fetch` via `NodeProvider` (mainnet, testnet, devnet)
 
-## Running
+### Expo setup
+
+After modernization, the Expo app requires only **4 workarounds** (down from 12):
+
+1. `react-native-get-random-values` — provides `crypto.getRandomValues` for `@noble/secp256k1`
+2. Custom `index.js` entry point — loads polyfills before the app
+3. `fs` empty shim in Metro config — Metro resolves dynamic `import('fs')` statically
+4. `node-linker=hoisted` in `.npmrc` — Metro is incompatible with pnpm's strict symlink layout
+
+No dev build required — **works with Expo Go**.
+
+## Testing with Local Registry
+
+`test-local.sh` starts a Verdaccio Docker container, builds and publishes all monorepo packages to it, so you can install them in the benchmark apps exactly as consumers would from npm:
 
 ```bash
-bash run.sh
+bash test-local.sh
 ```
 
-The `run.sh` script handles node-cli, website, webapp, and the expo web export automatically.
-
-For the expo iOS/Android build, run manually from `apps/expo/`:
+Then in any benchmark app:
 ```bash
-npx expo prebuild --platform ios --clean
-npx expo run:ios
+echo "@alephium:registry=http://localhost:4873" > .npmrc
+pnpm add @alephium/web3@<version> @alephium/web3-wallet@<version>
 ```
 
-Results are saved to `results/`.
+## Results
+
+- **[results/baseline.md](results/baseline.md)** — "before" metrics captured prior to any changes
+- **[results/results.md](results/results.md)** — "after" metrics with before/after comparisons
+
+Headline numbers:
+
+| Metric | Before | After |
+|---|---|---|
+| Website bundle | 742 kB | **48 kB (-93%)** |
+| Webapp bundle | 928 kB | **238 kB (-74%)** |
+| Polyfill plugin needed | Yes | **No** |
+| Expo workarounds | 12 | **4** |
+| Expo Go compatible | No | **Yes** |
+| Tree-shaking works | No | **Yes** |

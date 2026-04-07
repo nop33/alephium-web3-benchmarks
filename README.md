@@ -1,6 +1,28 @@
-# Alephium Web3 Monorepo Modernization Roadmap
+# Alephium Web3 Monorepo Modernization
 
-This document outlines the identified issues with the original `@alephium/web3` monorepo architecture and build setup, the phased roadmap to modernize the library (drawing inspiration from [viem](https://github.com/wevm/viem)), and the current status of each step.
+This repo documents the modernization of the [`@alephium/web3`](https://github.com/alephium/alephium-web3) monorepo — the roadmap, decisions, benchmark results, and reference apps used to validate the changes.
+
+## Repo Structure
+
+```
+benchmarks/
+  apps/
+    node-cli/           # Node.js CLI benchmark app
+    website/            # Vite vanilla JS benchmark app
+    webapp/             # Vite + React benchmark app
+    expo/               # Expo (React Native) benchmark app
+  results/
+    baseline.md         # Before/after benchmark report
+  test-local.sh         # Verdaccio local registry for testing published packages
+  README.md             # Benchmark documentation
+README.md               # This file — roadmap, decisions, and status
+```
+
+The benchmark apps test the published `@alephium/web3` and `@alephium/web3-wallet` packages across four environments (Node.js, vanilla website, React webapp, React Native/Expo), exercising HD wallet derivation, all cryptographic operations, address validation, and balance fetching on mainnet/testnet/devnet.
+
+## Roadmap
+
+Below is the full roadmap with identified issues, completed work, results, and next steps.
 
 ---
 
@@ -105,9 +127,6 @@ Replaced webpack with **tsc dual-build** (same approach as viem) across all thre
 ### High Priority
 
 #### 1. CI pipeline updates
-- Ensure the `update-schemas` codegen check works with the new template
-- Ensure the full test suite passes in CI (Docker services for integration tests)
-- Run `pnpm check` (publint + attw) in CI
 - Add `size-limit` checks with budgets per export
 
 #### 2. Sub-path exports for `@alephium/web3`
